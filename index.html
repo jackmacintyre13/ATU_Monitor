@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ATU Donegal · Status</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: #1a1a2e;
+    font-family: 'Segoe UI', sans-serif;
+    color: white;
+    padding: 40px 20px 60px;
+  }
+
+  /* ── Page title ── */
+  h1 {
+    text-align: center;
+    font-size: 1.4rem;
+    font-weight: 400;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #aaa;
+    margin-bottom: 8px;
+  }
+
+  #last-updated {
+    text-align: center;
+    font-size: 0.75rem;
+    color: #555;
+    margin-bottom: 40px;
+  }
+
+  /* ── Monitor dots ── */
+  #dot-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 32px;
+    margin-bottom: 60px;
+  }
+
+  .monitor {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    background: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 16px;
+    padding: 24px 20px;
+    width: 120px;
+    transition: border-color 0.3s;
+  }
+  .monitor:hover { border-color: #e94560; }
+
+  .dot-wrapper { position: relative; width: 52px; height: 52px; }
+  .dot { width: 52px; height: 52px; border-radius: 50%; background: gray; }
+  .dot.up   { background: #00e676; box-shadow: 0 0 12px #00e67688; }
+  .dot.down { background: #e53935; box-shadow: 0 0 12px #e5393588; }
+  .dot.up::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: #00e676;
+    opacity: 0.4;
+    animation: pulse 2s ease-out infinite;
+  }
+  @keyframes pulse {
+    0%   { transform: scale(1);   opacity: 0.5; }
+    100% { transform: scale(2.2); opacity: 0; }
+  }
+
+  .label { font-size: 13px; text-align: center; color: #ccc; word-break: break-word; line-height: 1.3; }
+  .status-text { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+  .status-text.up   { color: #00e676; }
+  .status-text.down { color: #e53935; }
+
+  #error-msg {
+    text-align: center; color: #e53935; font-size: 0.9rem;
+    display: none; margin-top: 20px; margin-bottom: 20px;
+  }
+
+  /* ── Info grid (late rooms + helpdesk) ── */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    max-width: 960px;
+    margin: 0 auto 60px;
+  }
+
+  .info-card {
+    background: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 16px;
+    padding: 24px 28px;
+  }
+
+  .info-card h2 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #4a90d9;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .info-card h2::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 14px;
+    background: #4a90d9;
+    border-radius: 2px;
+  }
+
+  /* Late rooms */
+  .room-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .room-badge {
+    background: #0f3460;
+    border: 1px solid #1a5276;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #e0e8ff;
+    letter-spacing: 0.05em;
+  }
+
+  .hours-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .hours-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.82rem;
+    color: #aaa;
+    padding: 6px 0;
+    border-bottom: 1px solid #0f3460;
+  }
+  .hours-row:last-child { border-bottom: none; }
+
+  .hours-row .days { color: #ccc; }
+  .hours-row .time {
+    font-weight: 600;
+    color: #00e676;
+    font-size: 0.85rem;
+  }
+
+  /* Helpdesk */
+  .helpdesk-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .helpdesk-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 14px;
+    background: #0f3460;
+    border-radius: 10px;
+  }
+
+  .helpdesk-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #4a90d9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .helpdesk-details { display: flex; flex-direction: column; gap: 2px; }
+  .helpdesk-name { font-size: 0.9rem; font-weight: 600; color: #e0e8ff; }
+  .helpdesk-room { font-size: 0.78rem; color: #6a8fbf; }
+
+  /* ── Weather section ── */
+  #weather-section {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  #weather-section h2 {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #4a90d9;
+    margin-bottom: 20px;
+  }
+
+  #weather-scroll {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  .weather-card {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    background: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 12px;
+    padding: 12px 4px;
+    transition: border-color 0.2s;
+  }
+
+  .weather-card.now { border-color: #4a90d9; }
+
+  .weather-hour { font-size: 11px; color: #888; }
+  .weather-icon { width: 36px; height: 36px; }
+  .weather-temp { font-size: 15px; font-weight: 600; color: #fff; }
+  .weather-wind { font-size: 10px; color: #6a8fbf; display: flex; align-items: center; gap: 3px; }
+
+  #weather-error { text-align: center; color: #e53935; font-size: 0.85rem; display: none; margin-top: 10px; }
+
+  /* ── Section divider ── */
+  .section-divider {
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto 40px;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #0f3460, transparent);
+  }
+</style>
+</head>
+<body>
+
+<h1>🟢 ATU Donegal · System Status</h1>
+<div id="last-updated">Fetching...</div>
+<div id="dot-container"></div>
+<div id="error-msg">⚠️ Could not reach API — retrying...</div>
+
+<div class="section-divider"></div>
+
+<!-- Info grid -->
+<div class="info-grid">
+
+  <!-- Late Rooms -->
+  <div class="info-card">
+    <h2>Late Rooms</h2>
+    <div class="room-list">
+      <div class="room-badge">2290</div>
+      <div class="room-badge">3336</div>
+      <div class="room-badge">2208</div>
+      <div class="room-badge">1113</div>
+      <div class="room-badge">1116</div>
+    </div>
+    <div class="hours-list">
+      <div class="hours-row">
+        <span class="days">Monday – Thursday</span>
+        <span class="time">Until 9:30 pm</span>
+      </div>
+      <div class="hours-row">
+        <span class="days">Friday</span>
+        <span class="time">Until 7:30 pm</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Helpdesk -->
+  <div class="info-card">
+    <h2>Helpdesk Locations</h2>
+    <div class="helpdesk-list">
+      <div class="helpdesk-item">
+        <div class="helpdesk-num">1</div>
+        <div class="helpdesk-details">
+          <div class="helpdesk-name">Helpdesk 1</div>
+          <div class="helpdesk-room">Room 2254</div>
+        </div>
+      </div>
+      <div class="helpdesk-item">
+        <div class="helpdesk-num">2</div>
+        <div class="helpdesk-details">
+          <div class="helpdesk-name">Helpdesk 2</div>
+          <div class="helpdesk-room">Room 2285</div>
+        </div>
+      </div>
+      <div class="helpdesk-item">
+        <div class="helpdesk-num">3</div>
+        <div class="helpdesk-details">
+          <div class="helpdesk-name">Helpdesk 3</div>
+          <div class="helpdesk-room">Upstairs Library</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="section-divider"></div>
+
+<!-- Weather -->
+<div id="weather-section">
+  <h2>🌤 Weather · ATU Donegal, Letterkenny</h2>
+  <div id="weather-scroll"></div>
+  <div id="weather-error">⚠️ Could not load weather</div>
+</div>
+
+<script>
+const ICONS = {
+  sunny: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="32" cy="32" r="12" fill="#FFD700"/>
+    ${[0,45,90,135,180,225,270,315].map(a => {
+      const r = a * Math.PI / 180;
+      const x1 = 32 + 18 * Math.sin(r), y1 = 32 - 18 * Math.cos(r);
+      const x2 = 32 + 24 * Math.sin(r), y2 = 32 - 24 * Math.cos(r);
+      return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/>`;
+    }).join('')}
+  </svg>`,
+
+  cloudy: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="24" cy="34" r="12" fill="#9ab"/>
+    <circle cx="36" cy="30" r="14" fill="#bcd"/>
+    <circle cx="46" cy="35" r="10" fill="#9ab"/>
+    <rect x="14" y="34" width="42" height="12" rx="6" fill="#bcd"/>
+  </svg>`,
+
+  partlycloudy: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="20" cy="22" r="10" fill="#FFD700"/>
+    ${[0,60,120,180,240,300].map(a => {
+      const r = a * Math.PI / 180;
+      const x1 = 20 + 14 * Math.sin(r), y1 = 22 - 14 * Math.cos(r);
+      const x2 = 20 + 18 * Math.sin(r), y2 = 22 - 18 * Math.cos(r);
+      return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#FFD700" stroke-width="2.5" stroke-linecap="round"/>`;
+    }).join('')}
+    <circle cx="30" cy="40" r="10" fill="#9ab"/>
+    <circle cx="40" cy="37" r="12" fill="#bcd"/>
+    <circle cx="48" cy="41" r="8" fill="#9ab"/>
+    <rect x="20" y="40" width="36" height="10" rx="5" fill="#bcd"/>
+  </svg>`,
+
+  rainy: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="24" cy="26" r="10" fill="#7a9"/>
+    <circle cx="36" cy="22" r="12" fill="#8ba"/>
+    <circle cx="46" cy="27" r="8"  fill="#7a9"/>
+    <rect x="16" y="26" width="38" height="10" rx="5" fill="#8ba"/>
+    <line x1="24" y1="42" x2="21" y2="52" stroke="#4af" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="32" y1="42" x2="29" y2="52" stroke="#4af" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="40" y1="42" x2="37" y2="52" stroke="#4af" stroke-width="2.5" stroke-linecap="round"/>
+  </svg>`,
+
+  snowy: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="24" cy="26" r="10" fill="#aac"/>
+    <circle cx="36" cy="22" r="12" fill="#cce"/>
+    <circle cx="46" cy="27" r="8"  fill="#aac"/>
+    <rect x="16" y="26" width="38" height="10" rx="5" fill="#cce"/>
+    <text x="20" y="54" font-size="16" fill="white">❄ ❄ ❄</text>
+  </svg>`,
+
+  thunder: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="24" cy="24" r="10" fill="#667"/>
+    <circle cx="36" cy="20" r="12" fill="#778"/>
+    <circle cx="46" cy="25" r="8"  fill="#667"/>
+    <rect x="16" y="24" width="38" height="10" rx="5" fill="#778"/>
+    <polyline points="35,36 29,48 34,48 28,58" stroke="#FFD700" stroke-width="3" stroke-linejoin="round" fill="none"/>
+  </svg>`,
+
+  foggy: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <line x1="10" y1="24" x2="54" y2="24" stroke="#aaa" stroke-width="3" stroke-linecap="round"/>
+    <line x1="14" y1="32" x2="50" y2="32" stroke="#999" stroke-width="3" stroke-linecap="round"/>
+    <line x1="10" y1="40" x2="54" y2="40" stroke="#aaa" stroke-width="3" stroke-linecap="round"/>
+    <line x1="18" y1="48" x2="46" y2="48" stroke="#888" stroke-width="3" stroke-linecap="round"/>
+  </svg>`,
+};
+
+function weatherInfo(code) {
+  if (code === 0)  return { icon: 'sunny',        label: 'Clear' };
+  if (code <= 2)   return { icon: 'partlycloudy', label: 'Partly Cloudy' };
+  if (code === 3)  return { icon: 'cloudy',       label: 'Overcast' };
+  if (code <= 49)  return { icon: 'foggy',        label: 'Fog' };
+  if (code <= 59)  return { icon: 'rainy',        label: 'Drizzle' };
+  if (code <= 69)  return { icon: 'rainy',        label: 'Rain' };
+  if (code <= 79)  return { icon: 'snowy',        label: 'Snow' };
+  if (code <= 84)  return { icon: 'rainy',        label: 'Showers' };
+  if (code <= 99)  return { icon: 'thunder',      label: 'Thunderstorm' };
+  return { icon: 'cloudy', label: 'Unknown' };
+}
+
+// ── Monitor dots ─────────────────────────────────────────────────
+async function updateDots() {
+  try {
+    const res = await fetch("/api/heartbeat");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    document.getElementById("error-msg").style.display = "none";
+    document.getElementById("last-updated").textContent =
+      "Last updated: " + new Date().toLocaleTimeString();
+
+    const container = document.getElementById("dot-container");
+    const monitorIDs = Object.keys(data.heartbeatList);
+
+    const nameMap = {};
+    if (data.monitorList) {
+      Object.values(data.monitorList).forEach(m => {
+        nameMap[m.id] = m.name || `Monitor ${m.id}`;
+      });
+    }
+
+    const incoming = new Set(monitorIDs);
+    container.querySelectorAll(".monitor").forEach(el => {
+      if (!incoming.has(el.dataset.id)) el.remove();
+    });
+
+    monitorIDs.forEach(id => {
+      const heartbeats = data.heartbeatList[id];
+      if (!heartbeats || heartbeats.length === 0) return;
+
+      const latest = heartbeats[heartbeats.length - 1];
+      const isUp = latest.status === 1;
+      const name = nameMap[id] || `Monitor ${id}`;
+      const statusClass = isUp ? "up" : "down";
+
+      let card = container.querySelector(`.monitor[data-id="${id}"]`);
+      if (!card) {
+        card = document.createElement("div");
+        card.className = "monitor";
+        card.dataset.id = id;
+        card.innerHTML = `
+          <div class="dot-wrapper"><div class="dot"></div></div>
+          <div class="label"></div>
+          <div class="status-text"></div>
+        `;
+        container.appendChild(card);
+      }
+
+      card.querySelector(".dot").className = `dot ${statusClass}`;
+      card.querySelector(".label").textContent = name;
+      const st = card.querySelector(".status-text");
+      st.textContent = isUp ? "Online" : "Down";
+      st.className = `status-text ${statusClass}`;
+    });
+
+  } catch (err) {
+    console.error("Failed to fetch status:", err);
+    document.getElementById("error-msg").style.display = "block";
+    document.getElementById("last-updated").textContent =
+      "Last attempt: " + new Date().toLocaleTimeString();
+  }
+}
+
+// ── Weather ──────────────────────────────────────────────────────
+async function updateWeather() {
+  try {
+    const res = await fetch("/api/weather");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    const times = data.hourly.time;
+    const temps = data.hourly.temperature_2m;
+    const codes = data.hourly.weathercode;
+    const winds = data.hourly.windspeed_10m;
+
+    const scroll = document.getElementById("weather-scroll");
+    scroll.innerHTML = "";
+
+    const nowHour = new Date().getHours();
+
+    times.forEach((t, i) => {
+      const hour = parseInt(t.split("T")[1].split(":")[0]);
+      if (hour < 8 || hour > 22) return;
+
+      const card = document.createElement("div");
+      card.className = "weather-card" + (hour === nowHour ? " now" : "");
+
+      const info = weatherInfo(codes[i]);
+
+      card.innerHTML = `
+        <div class="weather-hour">${hour === nowHour ? "Now" : String(hour).padStart(2,"0") + ":00"}</div>
+        <div class="weather-icon">${ICONS[info.icon]}</div>
+        <div class="weather-temp">${Math.round(temps[i])}°C</div>
+        <div class="weather-wind">
+          <svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 1 L5 9 M2 4 L5 1 L8 4" stroke="#6a8fbf" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+          ${Math.round(winds[i])} km/h
+        </div>
+      `;
+
+      scroll.appendChild(card);
+    });
+
+    document.getElementById("weather-error").style.display = "none";
+
+  } catch (err) {
+    console.error("Weather fetch failed:", err);
+    document.getElementById("weather-error").style.display = "block";
+  }
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+updateDots();
+updateWeather();
+
+setInterval(updateDots, 5000);
+setInterval(updateWeather, 5 * 60 * 1000);
+</script>
+</body>
+</html>
