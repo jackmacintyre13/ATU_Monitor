@@ -6,9 +6,14 @@ import subprocess
 
 # ── Monitor name map ──────────────────────────────────────────────
 MONITOR_NAMES = {
-    "1": "My Server",
-    "2": "Some Service",
-    "3": "Another Monitor",
+    "1": "ATU.ie",
+    "2": "Wi-Fi",
+    "3": "Test",
+    "4": "Blackboard",
+    "6": "Timetable",
+    "7": "Helpdesk",
+    "8": "Outlook",
+    "9": "Banner",
 }
 
 # ── Weather cache (fetched once every 30 mins = max 48 calls/day) ─
